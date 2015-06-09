@@ -18,6 +18,7 @@ preferences
 {
     input("testMode", "boolean", title: "Enable Test Mode")    
     input("enableDebug", "boolean", title: "Enable Debug Messages")    
+    input("motiontimeout", "number", title: "Motion timeout in minutes")
 }
 
 metadata 
@@ -59,8 +60,12 @@ metadata
             state("battery", label:'${currentValue}% battery', unit:"")
         }
 
+        standardTile("configure", "device.switch", inactiveLabel: false, decoration: "flat") {
+            state "default", label:"", action:"configure", icon:"st.secondary.configure"
+        }
+
         main "motion"
-        details(["motion", "battery"])
+        details(["motion", "battery", "configure"])
     }
 }
 
@@ -91,10 +96,10 @@ def configure()
         zwave.associationV2.associationSet(groupingIdentifier: 1, nodeId:zwaveHubNodeId).format(),
 
         // Set motion sensor timeout to 5 minutes
-        zwave.configurationV2.configurationSet(configurationValue: [5], parameterNumber: 0, size: 1).format(),
+        zwave.configurationV2.configurationSet(configurationValue: [motiontimeout], parameterNumber: 0, size: 1).format(),
      
-        // Set the wake up to 6 hours
-        zwave.wakeUpV1.wakeUpIntervalSet(seconds:6 * 3600, nodeid:zwaveHubNodeId).format(),
+        // Set the wake up to 30 minutes
+        zwave.wakeUpV1.wakeUpIntervalSet(seconds:1800, nodeid:zwaveHubNodeId).format(),
         
 		// Get initial battery report
         zwave.batteryV1.batteryGet().format()
