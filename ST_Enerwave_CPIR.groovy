@@ -18,7 +18,7 @@ preferences
 {
     input("testMode", "boolean", title: "Enable Test Mode")    
     input("enableDebug", "boolean", title: "Enable Debug Messages")    
-    input("motiontimeout", "number", title: "Motion timeout in minutes")
+    input("motiontimeout", "number", title: "Motion timeout in minutes (default 5 minutes)", defaultValue: 5)
 }
 
 metadata 
