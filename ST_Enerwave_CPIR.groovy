@@ -23,8 +23,8 @@
  
 preferences 
 {
-    input("motiontimeout", "number", title: "Motion timeout in minutes (default 5 minutes)", defaultValue: 5, required: true, displayDuringSetup: true)
-    input("testMode", "boolean", title: "Enable Test Mode", defaultValue: false, required: true, displayDuringSetup: true)
+    input("motiontimeout", "number", title: "Motion timeout in minutes (default 5 minutes)", defaultValue: 5, displayDuringSetup: true)
+    input("testMode", "boolean", title: "Enable Test Mode", defaultValue: false, displayDuringSetup: true)
 }
 
 metadata 
