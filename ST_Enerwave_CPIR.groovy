@@ -12,6 +12,11 @@
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
  *
+ *  Updates
+ *  11/29 BG
+ *  	Set wake back to six hours
+ * 	Added delay in configure
+ * 	Added configure to install and update routines
  */
  
 preferences 
@@ -26,7 +31,7 @@ metadata
     definition (namespace: "adamheinmiller", name: "Enerwave Ceiling Mounted Motion Sensor", author: "Adam Heinmiller") 
     {
         capability "Motion Sensor"
-		capability "Battery"
+	capability "Battery"
         capability "Configuration"
         
         fingerprint deviceId:"0x2001", inClusters:"0x30, 0x84, 0x80, 0x85, 0x72, 0x86, 0x70"        
@@ -71,7 +76,8 @@ metadata
 
 def installed()
 {
-	
+configure()
+log.debug "Installed with settings: ${settings}"
 }
 
 def updated()
@@ -84,6 +90,9 @@ def updated()
     {
     	state.NextMotionDuration = 5
 	}
+
+configure()
+log.debug "Updated with settings: ${settings}"
 }
 
 def configure()
@@ -92,19 +101,19 @@ def configure()
 
      delayBetween([
 
-		// Set device association for motion commands
+	// Set device association for motion commands
         zwave.associationV2.associationSet(groupingIdentifier: 1, nodeId:zwaveHubNodeId).format(),
 
         // Set motion sensor timeout to 5 minutes
         zwave.configurationV2.configurationSet(configurationValue: [motiontimeout], parameterNumber: 0, size: 1).format(),
      
-        // Set the wake up to 30 minutes
-        zwave.wakeUpV1.wakeUpIntervalSet(seconds:1800, nodeid:zwaveHubNodeId).format(),
+        // Set the wake up back to 6 hours (save battery)
+        zwave.wakeUpV1.wakeUpIntervalSet(seconds:6 * 3600, nodeid:zwaveHubNodeId).format(),
         
-		// Get initial battery report
+	// Get initial battery report
         zwave.batteryV1.batteryGet().format()
         
-     ])	
+     ],2000)	
 }
 
 
