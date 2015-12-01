@@ -12,13 +12,19 @@
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
  *
+ *  Updates
+ *  11/29 BG
+ *	Set wake back to six hours
+ * 	Added delay in configure
+ * 	Added configure to install and update routines
+ * 	Simplified test mode/debug
+ * 	Automated the wake up, putting into test mode shortens wake up 
  */
  
 preferences 
 {
-    input("testMode", "boolean", title: "Enable Test Mode")    
-    input("enableDebug", "boolean", title: "Enable Debug Messages")    
-    input("motiontimeout", "number", title: "Motion timeout in minutes (default 5 minutes)", defaultValue: 5)
+    input("motiontimeout", "number", title: "Motion timeout in minutes (default 5 minutes)", defaultValue: 5, displayDuringSetup: true)
+    input("testMode", "boolean", title: "Enable Test Mode", defaultValue: false, displayDuringSetup: true)
 }
 
 metadata 
@@ -26,7 +32,7 @@ metadata
     definition (namespace: "adamheinmiller", name: "Enerwave Ceiling Mounted Motion Sensor", author: "Adam Heinmiller") 
     {
         capability "Motion Sensor"
-		capability "Battery"
+	capability "Battery"
         capability "Configuration"
         
         fingerprint deviceId:"0x2001", inClusters:"0x30, 0x84, 0x80, 0x85, 0x72, 0x86, 0x70"        
@@ -34,13 +40,13 @@ metadata
 
     simulator 
     {
-		status "Motion Started": "command: 2001, payload: FF"
-		status "Motion Stopped": "command: 2001, payload: 00"
+	status "Motion Started": "command: 2001, payload: FF"
+	status "Motion Stopped": "command: 2001, payload: 00"
         
-		status "Wakeup": "command: 8407, payload: 00"
+        status "Wakeup": "command: 8407, payload: 00"
          
-		status "Battery Status 0%": "command: 8003, payload: FF"
-		status "Battery Status 25%": "command: 8003, payload: 19"
+	status "Battery Status 0%": "command: 8003, payload: FF"
+	status "Battery Status 25%": "command: 8003, payload: 19"
         status "Battery Status 50%": "command: 8003, payload: 32"
         status "Battery Status 75%": "command: 8003, payload: 4B"
         status "Battery Status 100%": "command: 8003, payload: 64"
@@ -71,40 +77,43 @@ metadata
 
 def installed()
 {
-	
+configure()
+log.debug "Installed with settings: ${settings}"
 }
 
 def updated()
 {
-	if (settings.testMode == "true")
-    {
-    	state.NextMotionDuration = 250
-    }
-    else
-    {
-    	state.NextMotionDuration = 5
-	}
+	state.NextMotionDuration = 5
+	if (settings.testMode) state.NextMotionDuration = 250
+
+	configure()
+	log.debug "Updated with settings: ${settings}"
 }
 
 def configure()
 {
-	logMessage("Configuring Device")
+	log.debug "Configuring Device"
+	
+	state.wakeUp = 10 * 60 //5 minutes for testing
+	if (settings.testMode) state.wakeUp = 6 * 3600 //6 hours for normal use
 
-     delayBetween([
+	delayBetween([
 
-		// Set device association for motion commands
+	// Set device association for motion commands
         zwave.associationV2.associationSet(groupingIdentifier: 1, nodeId:zwaveHubNodeId).format(),
 
         // Set motion sensor timeout to 5 minutes
         zwave.configurationV2.configurationSet(configurationValue: [motiontimeout], parameterNumber: 0, size: 1).format(),
      
-        // Set the wake up to 30 minutes
-        zwave.wakeUpV1.wakeUpIntervalSet(seconds:1800, nodeid:zwaveHubNodeId).format(),
+        // Set the wake up
         
-		// Get initial battery report
+        zwave.wakeUpV1.wakeUpIntervalSet(seconds:state.wakeUp, nodeid:zwaveHubNodeId).format(),
+        
+	// Get initial battery report
         zwave.batteryV1.batteryGet().format()
-        
-     ])	
+        ],2000)	
+
+	log.debug "Configured with settings: ${settings}"
 }
 
 
@@ -117,8 +126,7 @@ def parse(String description)
 
 	if (!cmd) return;
     
-    logMessage(description)
-
+    if (settings.testMode) log.debug "Parse Description: $description"
 
     return zwaveEvent(cmd)
 }
@@ -126,7 +134,8 @@ def parse(String description)
 
 def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) 
 {
-    logCommand(cmd)
+
+    if (settings.testMode) log.debug "Command: $cmd"
 
 	def result = []
     
@@ -149,7 +158,7 @@ def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd)
 
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) 
 {
-    logCommand(cmd)
+    if (settings.testMode) log.debug "Command: $cmd"
 
     def result = [name: "battery", unit: "%", value: cmd.batteryLevel]
     
@@ -160,7 +169,7 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd)
 
 def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd)
 {
-    logCommand(cmd)
+    if (settings.testMode) log.debug "Command: $cmd"
 
 	def result = []
     
@@ -179,19 +188,5 @@ def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicSet cmd)
 
 def zwaveEvent(physicalgraph.zwave.Command cmd) 
 {
-    logCommand("**Unhandled**: $cmd")
-}
-
-def logCommand(cmd)
-{
-	if (settings.enableDebug == "false") return
-    
-	log.debug "Device Command:  $cmd"
-}
-
-def logMessage(message)
-{
-	if (settings.enableDebug == "false") return
-
-	log.debug message
+    if (settings.testMode) log.debug "Unhandled Command: $cmd"
 }
